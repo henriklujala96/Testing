@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweden Feedstock & Customer Map</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 100vh; width: 100%; }
+        .legend {
+            background: white;
+            padding: 12px;
+            line-height: 20px;
+            color: #333;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            font-family: ui-sans-serif, system-ui;
+        }
+        .legend i {
+            width: 14px;
+            height: 14px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.8;
+            border-radius: 50%;
+        }
+        .legend .diamond {
+            width: 12px;
+            height: 12px;
+            transform: rotate(45deg);
+            border: 1.5px solid black;
+            margin-top: 4px;
+            margin-right: 10px;
+            float: left;
+        }
+        .custom-popup .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            padding: 0;
+            overflow: hidden;
+        }
+        .custom-popup .leaflet-popup-content {
+            margin: 0;
+            width: 320px !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="map"></div>
+
+    <script>
+        // FEEDSTOCK DATA
+        const bioData = [
+            { rank: 1, name: "Preemraff Gothenburg", lat: 57.69, lng: 11.83, volume: "1,200,000", type: "HVO / Renewable Diesel", owner: "Preem AB", web: "www.preem.se", phone: "+46 10 450 10 00", color: "#16a34a" },
+            { rank: 2, name: "Preemraff Lysekil", lat: 58.29, lng: 11.43, volume: "950,000", type: "HVO / Bio-jet", owner: "Preem AB", web: "www.preem.se", phone: "+46 10 450 10 00", color: "#16a34a" },
+            { rank: 3, name: "St1 Gothenburg", lat: 57.71, lng: 11.90, volume: "200,000", type: "HVO / Bio-ethanol", owner: "St1 Nordic", web: "www.st1.se", phone: "+46 8 555 330 00", color: "#16a34a" },
+            { rank: 4, name: "SunPine Piteå", lat: 65.30, lng: 21.48, volume: "180,000", type: "Tall Oil Diesel", owner: "SunPine AB", web: "www.sunpine.se", phone: "+46 911 23 28 00", color: "#16a34a" },
+            { rank: 5, name: "Lantmännen Norrköping", lat: 58.60, lng: 16.20, volume: "155,000", type: "Grain Ethanol", owner: "Lantmännen Agroetanol", web: "www.agroetanol.se", phone: "+46 10 556 00 00", color: "#16a34a" },
+            { rank: 6, name: "Adesso Biocure", lat: 58.17, lng: 11.83, volume: "140,000", type: "Biodiesel (RME)", owner: "Adesso BioProducts", web: "www.adessobioproducts.se", phone: "+46 303 33 33 00", color: "#16a34a" },
+            { rank: 7, name: "Perstorp Bioproducts", lat: 56.13, lng: 13.38, volume: "120,000", type: "RME / Biodiesel", owner: "Perstorp Group", web: "www.perstorp.com", phone: "+46 435 380 00", color: "#16a34a" },
+            { rank: 8, name: "Södra Bioproducts", lat: 57.23, lng: 12.11, volume: "110,000", type: "Biomethanol", owner: "Södra", web: "www.sodra.com", phone: "+46 470 890 00", color: "#16a34a" },
+            { rank: 9, name: "Energifabriken", lat: 58.41, lng: 15.62, volume: "85,000", type: "HVO / RME", owner: "Energifabriken", web: "www.energifabriken.se", phone: "+46 10 155 10 00", color: "#16a34a" },
+            { rank: 10, name: "Sekab Örnsköldsvik", lat: 63.29, lng: 18.71, volume: "75,000", type: "Bio-chemicals / Ethanol", owner: "Sekab", web: "www.sekab.com", phone: "+46 660 751 00", color: "#16a34a" },
+            { rank: 11, name: "Borealis Stenungsund", lat: 58.07, lng: 11.82, volume: "65,000", type: "Renewable Feedstock", owner: "Borealis AG", web: "www.borealisgroup.com", phone: "+46 303 860 00", color: "#0d9488" },
+            { rank: 12, name: "Scandic Biofuel", lat: 59.35, lng: 17.03, volume: "50,000", type: "Biodiesel", owner: "Scandic Biofuel", web: "www.scandicbiofuel.se", phone: "+46 152 100 00", color: "#16a34a" },
+            { rank: 13, name: "Neste Depot", lat: 57.70, lng: 11.95, volume: "45,000", type: "HVO Storage/Blending", owner: "Neste", web: "www.neste.se", phone: "+46 8 505 500 00", color: "#0284c7" },
+            { rank: 14, name: "Ecobränsle Karlshamn", lat: 56.17, lng: 14.86, volume: "35,000", type: "RME", owner: "Ecobränsle", web: "www.ecobransle.se", phone: "+46 454 100 00", color: "#16a34a" },
+            { rank: 15, name: "Colabitoil", lat: 61.30, lng: 17.05, volume: "25,000", type: "HVO / Renewable Diesel", owner: "Colabitoil Sweden", web: "www.colabitoil.com", phone: "+46 270 120 00", color: "#16a34a" }
+        ];
+
+        const mineData = [
+            { rank: 1, name: "Aitik", lat: 67.07, lng: 20.95, volume: "40,500,000", type: "Copper Tailings", owner: "Boliden AB", web: "www.boliden.com", phone: "+46 970 735 00", color: "red" },
+            { rank: 2, name: "Kiruna", lat: 67.85, lng: 20.22, volume: "14,200,000", type: "Iron Ore Sand", owner: "LKAB", web: "www.lkab.com", phone: "+46 980 710 00", color: "red" },
+            { rank: 3, name: "Kevitsa", lat: 67.68, lng: 26.65, volume: "9,700,000", type: "Ni/Cu Tailings", owner: "Boliden AB", web: "www.boliden.com", phone: "+358 16 451 100", color: "red" },
+            { rank: 4, name: "Malmberget", lat: 67.17, lng: 20.66, volume: "7,800,000", type: "Iron Ore Sand", owner: "LKAB", web: "www.lkab.com", phone: "+46 970 760 00", color: "red" },
+            { rank: 5, name: "Garpenberg", lat: 60.31, lng: 16.20, volume: "3,400,000", type: "Zn/Ag Tailings", owner: "Boliden AB", web: "www.boliden.com", phone: "+46 225 360 00", color: "red" },
+            { rank: 6, name: "Svappavaara", lat: 67.64, lng: 21.05, volume: "3,200,000", type: "Iron Ore Sand", owner: "LKAB", web: "www.lkab.com", phone: "+46 980 710 00", color: "red" },
+            { rank: 7, name: "Boliden Area", lat: 65.06, lng: 18.57, volume: "1,700,000", type: "Polymetallic", owner: "Boliden AB", web: "www.boliden.com", phone: "+46 910 77 40 00", color: "red" },
+            { rank: 8, name: "Zinkgruvan", lat: 58.81, lng: 15.11, volume: "1,400,000", type: "Zinc/Lead", owner: "Lundin Mining", web: "www.lundinmining.com", phone: "+46 583 822 00", color: "red" },
+            { rank: 9, name: "Kaunis Iron", lat: 67.41, lng: 23.41, volume: "1,100,000", type: "Iron Ore Sand", owner: "Kaunis Iron", web: "www.kaunisiron.se", phone: "+46 978 105 00", color: "red" },
+            { rank: 10, name: "Björkdalsgruvan", lat: 64.92, lng: 20.57, volume: "1,050,000", type: "Gold Tailings", owner: "Mandalay Resources", web: "www.mandalayres.com", phone: "+46 910 72 57 00", color: "red" },
+            { rank: 11, name: "Lovisagruvan", lat: 59.73, lng: 15.22, volume: "750,000", type: "Zinc/Lead", owner: "Lovisagruvan", web: "www.lovisagruvan.se", phone: "+46 581 65 00 10", color: "red" },
+            { rank: 12, name: "Svartliden", lat: 64.65, lng: 18.66, volume: "450,000", type: "Gold Tailings", owner: "Dragon Mining", web: "www.dragonmining.com", phone: "+46 950 40 43 00", color: "red" },
+            { rank: 13, name: "Södra Kärr", lat: 58.07, lng: 14.54, volume: "380,000", type: "REE/Mineral", owner: "Leading Edge", web: "www.leadingedge.com", phone: "+46 8 502 422 41", color: "red" },
+            { rank: 14, name: "Häggån", lat: 63.02, lng: 14.50, volume: "280,000", type: "V/Mo Residue", owner: "Aura Energy", web: "www.auraenergy.com.au", phone: "+61 3 9101 0129", color: "red" },
+            { rank: 15, name: "Fäbodtjärn", lat: 64.44, lng: 19.55, volume: "90,000", type: "Gold Tailings", owner: "Botnia Exploration", web: "www.botniaexpl.se", phone: "+46 8 120 160 50", color: "red" }
+        ];
+
+        const slagData = [
+            { rank: 1, name: "SSAB Luleå", lat: 65.58, lng: 22.22, volume: "1,200,000", type: "Blast Furnace Slag", owner: "SSAB AB", web: "www.ssab.com", phone: "+46 920 920 00", color: "blue" },
+            { rank: 2, name: "SSAB Oxelösund", lat: 58.67, lng: 17.11, volume: "950,000", type: "Steel/BF Slag", owner: "SSAB AB", web: "www.ssab.com", phone: "+46 155 25 10 00", color: "blue" },
+            { rank: 3, name: "Rönnskär Smelter", lat: 64.67, lng: 21.27, volume: "550,000", type: "Copper Slag", owner: "Boliden AB", web: "www.boliden.com", phone: "+46 910 77 30 00", color: "blue" },
+            { rank: 4, name: "Sandvik SMT", lat: 60.62, lng: 16.77, volume: "180,000", type: "Steel Slag", owner: "Alleima", web: "www.alleima.com", phone: "+46 26 26 00 00", color: "blue" },
+            { rank: 5, name: "Ovako Hofors", lat: 60.55, lng: 16.29, volume: "140,000", type: "EAF Slag", owner: "Ovako AB", web: "www.ovako.com", phone: "+46 290 250 00", color: "blue" },
+            { rank: 6, name: "Höganäs Plant", lat: 56.20, lng: 12.55, volume: "110,000", type: "Iron Powder Slag", owner: "Höganäs AB", web: "www.hoganas.com", phone: "+46 42 33 80 00", color: "blue" },
+            { rank: 7, name: "Outokumpu Avesta", lat: 60.14, lng: 16.17, volume: "105,000", type: "Stainless Slag", owner: "Outokumpu Oyj", web: "www.outokumpu.com", phone: "+46 226 810 00", color: "blue" },
+            { rank: 8, name: "Ovako Smedjebacken", lat: 60.14, lng: 15.42, volume: "95,000", type: "Steel Slag", owner: "Ovako AB", web: "www.ovako.com", phone: "+46 240 66 80 00", color: "blue" },
+            { rank: 9, name: "Uddeholm Hagfors", lat: 60.03, lng: 13.70, volume: "75,000", type: "Tool Steel Slag", owner: "voestalpine AG", web: "www.uddeholm.com", phone: "+46 563 170 00", color: "blue" },
+            { rank: 10, name: "Scania Södertälje", lat: 59.19, lng: 17.63, volume: "65,000", type: "Foundry Slag", owner: "Scania CV AB", web: "www.scania.com", phone: "+46 8 553 810 00", color: "blue" },
+            { rank: 11, name: "Hällefors Steel", lat: 59.85, lng: 14.52, volume: "55,000", type: "Ladle Slag", owner: "Ovako AB", web: "www.ovako.com", phone: "+46 591 600 00", color: "blue" },
+            { rank: 12, name: "Volvo Gjuteri", lat: 58.41, lng: 13.82, volume: "45,000", type: "Foundry Slag", owner: "Volvo Group", web: "www.volvogroup.com", phone: "+46 500 47 40 00", color: "blue" },
+            { rank: 13, name: "Björneborg Steel", lat: 59.24, lng: 14.24, volume: "35,000", type: "Forging Slag", owner: "Björneborg Steel", web: "www.bjorneborgsteel.se", phone: "+46 550 271 00", color: "blue" },
+            { rank: 14, name: "Kanthal Hallstahammar", lat: 59.61, lng: 16.22, volume: "25,000", type: "Alloy Slag", owner: "Sandvik Group", web: "www.kanthal.com", phone: "+46 220 210 00", color: "blue" },
+            { rank: 15, name: "Vargön Alloys", lat: 58.36, lng: 12.40, volume: "22,000", type: "Ferrochrome Slag", owner: "Yildirim Group", web: "www.vargonalloys.se", phone: "+46 521 27 73 00", color: "blue" }
+        ];
+
+        const wteData = [
+            { rank: 1, name: "SYSAV Malmö", lat: 55.62, lng: 13.04, volume: "630,000", type: "IBA / Fly Ash", owner: "SYSAV", web: "www.sysav.se", phone: "+46 40 635 18 00", color: "#ea580c" },
+            { rank: 2, name: "Renova Sävenäs", lat: 57.72, lng: 12.04, volume: "550,000", type: "IBA / Fly Ash", owner: "Renova AB", web: "www.renova.se", phone: "+46 31 334 10 00", color: "#ea580c" },
+            { rank: 3, name: "Högdalenverket", lat: 59.26, lng: 18.05, volume: "520,000", type: "Bottom Ash", owner: "Stockholm Exergi", web: "www.stockholmexergi.se", phone: "+46 20 502 500", color: "#ea580c" },
+            { rank: 4, name: "Gärstadverket", lat: 58.43, lng: 15.68, volume: "440,000", type: "IBA / Fly Ash", owner: "Tekniska Verken", web: "www.tekniskaverken.se", phone: "+46 13 20 80 00", color: "#ea580c" },
+            { rank: 5, name: "Bristaverket", lat: 59.60, lng: 17.88, volume: "420,000", type: "Bottom Ash", owner: "Stockholm Exergi", web: "www.stockholmexergi.se", phone: "+46 20 502 500", color: "#ea580c" },
+            { rank: 6, name: "Mälarenergi Västerås", lat: 59.61, lng: 16.58, volume: "400,000", type: "IBA / APC Residue", owner: "Mälarenergi AB", web: "www.malarenergi.se", phone: "+46 21 39 50 00", color: "#ea580c" },
+            { rank: 7, name: "Filbornaverket", lat: 56.06, lng: 12.75, volume: "350,000", type: "Bottom Ash", owner: "Öresundskraft", web: "www.oresundskraft.se", phone: "+46 42 490 30 00", color: "#ea580c" },
+            { rank: 8, name: "Dåva Kraftvärmeverk", lat: 63.88, lng: 20.35, volume: "320,000", type: "IBA / Fly Ash", owner: "Umeå Energi", web: "www.umeaenergi.se", phone: "+46 90 16 00 00", color: "#ea580c" },
+            { rank: 9, name: "Uppsala Block 5", lat: 59.85, lng: 17.68, volume: "300,000", type: "Bottom Ash", owner: "Vattenfall", web: "www.vattenfall.se", phone: "+46 18 67 40 00", color: "#ea580c" },
+            { rank: 10, name: "Sydvästra Skåne WTE", lat: 56.04, lng: 14.31, volume: "280,000", type: "IBA Residue", owner: "NSR AB", web: "www.nsr.se", phone: "+46 42 400 13 00", color: "#ea580c" },
+            { rank: 11, name: "Boda Avfallsanläggning", lat: 60.67, lng: 17.14, volume: "250,000", type: "Bottom Ash", owner: "Gästrike Återvinnare", web: "www.gastrikeatervinnare.se", phone: "+46 20 63 00 63", color: "#ea580c" },
+            { rank: 12, name: "Lundaverket", lat: 55.72, lng: 13.21, volume: "230,000", type: "IBA / Fly Ash", owner: "Kraftringen", web: "www.kraftringen.se", phone: "+46 771 62 62 62", color: "#ea580c" },
+            { rank: 13, name: "Torsviksverket", lat: 57.70, lng: 14.17, volume: "210,000", type: "Bottom Ash", owner: "Jönköping Energi", web: "www.jonkopingenergi.se", phone: "+46 36 10 82 00", color: "#ea580c" },
+            { rank: 14, name: "Korstaverket", lat: 62.39, lng: 17.35, volume: "200,000", type: "IBA / APC Residue", owner: "Sundsvall Energi", web: "www.sundsvallenergi.se", phone: "+46 60 19 20 00", color: "#ea580c" },
+            { rank: 15, name: "Händelöverket", lat: 58.61, lng: 16.23, volume: "190,000", type: "Bottom Ash", owner: "E.ON Sverige", web: "www.eon.se", phone: "+46 200 22 24 24", color: "#ea580c" }
+        ];
+
+        // CUSTOMER DATA (19 Entries from File)
+        const customerData = [
+            { name: "Konsolis Strängbetong AB", segment: "Hollow Core Slabs", lat: 59.3607, lng: 17.9987, priority: "High", rev: "~1,566 MSEK", trend: "↓ Declining", notes: "HQ: Solna. IPHA member; testing alternative binders (rice husk ash); Green Spine Line® low-carbon product", color: "#7c3aed" },
+            { name: "Skandinaviska Byggelement AB (PEAB)", segment: "Hollow Core Slabs", lat: 59.6167, lng: 16.2167, priority: "High", rev: "Division of PEAB", trend: "↓ Follows PEAB", notes: "HQ: Hallstahammar. Modern factory; ECO-Prefab uses slag as binder; part of PEAB Group", color: "#7c3aed" },
+            { name: "Abetong AB (Heidelberg Materials)", segment: "Hollow Core Slabs", lat: 56.8777, lng: 14.8091, priority: "High", rev: "~1,036 MSEK", trend: "↓ Declining", notes: "HQ: Växjö. Active in evoBuild climate-improved concrete; part of Heidelberg Materials", color: "#7c3aed" },
+            { name: "Heidelberg Materials Precast Contiga AB", segment: "Precast Elements", lat: 59.75, lng: 18.70, priority: "Medium", rev: "~1,242 MSEK", trend: "↑ Growing", notes: "Factory in Norrtälje; infrastructure focus; part of Heidelberg Materials Nordic Precast", color: "#9333ea" },
+            { name: "K-Prefab AB", segment: "Precast Elements", lat: 55.605, lng: 13.0038, priority: "Medium", rev: "~764 MSEK", trend: "↓ Declining", notes: "HQ: Malmö. Focus on housing and commercial; EPD active", color: "#9333ea" },
+            { name: "Finja Prefab AB", segment: "Precast Elements", lat: 56.15, lng: 13.85, priority: "Medium", rev: "~1,000+ MSEK", trend: "→ Stable", notes: "HQ: Hässleholm. Large regional player; climate-positive concrete goals", color: "#9333ea" },
+            { name: "Benders Sverige AB", segment: "Concrete Blocks", lat: 58.2811, lng: 12.9234, priority: "High", rev: "~2,600 MSEK", trend: "→ Stable", notes: "Market leader in paving; major buyer of aggregates for block production", color: "#c026d3" },
+            { name: "S:t Eriks AB", segment: "Concrete Blocks", lat: 59.85, lng: 17.65, priority: "High", rev: "~1,100 MSEK", trend: "→ Stable", notes: "HQ: Uppsala. Infrastructure focus; vault and paving stones; large cement consumer", color: "#c026d3" },
+            { name: "Meag VA-system AB", segment: "Concrete Pipes", lat: 58.41, lng: 15.62, priority: "High", rev: "~350 MSEK", trend: "→ Stable", notes: "Specialist in water and sewage pipes; uses high-strength concrete mixes", color: "#db2777" },
+            { name: "Dahlgrens Cementgjuteri", segment: "Concrete Pipes", lat: 64.75, lng: 20.95, priority: "High", rev: "~150 MSEK", trend: "↑ Growing", notes: "Growing rapidly; large infra projects in North; recently invested in new capacity", color: "#db2777" },
+            { name: "Starka Betongindustrier", lat: 55.93, lng: 13.52, segment: "Precast Elements", priority: "Medium", rev: "~600 MSEK", trend: "→ Stable", notes: "Based in Kristianstad; family-owned; diverse precast portfolio", color: "#9333ea" },
+            { name: "Heda Skandinavien AB", lat: 58.17, lng: 13.55, segment: "Concrete Blocks", priority: "Medium", rev: "~120 MSEK", trend: "→ Stable", notes: "Retaining walls and L-elements; based in Falköping", color: "#c026d3" },
+            { name: "Harlösa Cementgjuteri", lat: 55.72, lng: 13.52, segment: "Concrete Blocks", priority: "Medium", rev: "<10 MSEK", trend: "↓ Declining", notes: "Family-run; agricultural concrete products; flexible for trials", color: "#c026d3" },
+            { name: "Heidelberg Materials Betong Sverige", lat: 59.33, lng: 18.06, segment: "Patching / Ready-mix", priority: "Medium", rev: "N/A (Group)", trend: "↓ Follows market", notes: "Trafikverket-approved supply chain; long approval pathway but large volumes", color: "#0ea5e9" },
+            { name: "Lujabetong", lat: 59.32, lng: 18.07, segment: "Patching / Ready-mix", priority: "Medium", rev: "N/A", trend: "→ Stable", notes: "Regional ready-mix supplier in greater Stockholm; patching and repair works", color: "#0ea5e9" },
+            { name: "NCC Infrastructure", lat: 59.36, lng: 17.99, segment: "Patching / Infrastructure", priority: "Low", rev: "~65,000 (Group)", trend: "→ Stable", notes: "Own batching capacity; approach via materials procurement division", color: "#0ea5e9" },
+            { name: "Skanska Infrastructure", lat: 59.34, lng: 18.05, segment: "Patching / Infrastructure", priority: "Low", rev: "~185,000 (Group)", trend: "→ Stable", notes: "Global procurement processes; very long approval pathway", color: "#0ea5e9" },
+            { name: "Peab Infrastructure", lat: 56.44, lng: 12.81, segment: "Patching / Infrastructure", priority: "Low", rev: "~67,000 (Group)", trend: "→ Stable", notes: "Based in Förslöv; vertically integrated; longer sales cycle", color: "#0ea5e9" },
+            { name: "Svevia AB", lat: 59.36, lng: 17.98, segment: "Patching / Infrastructure", priority: "Low", rev: "~9,000 MSEK", trend: "→ Stable", notes: "State-owned road contractor; massive consumer of aggregates for road maintenance", color: "#0ea5e9" }
+        ];
+
+        // INITIALIZE MAP
+        const map = L.map('map').setView([62.0, 15.0], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // HELPER: POPUPS
+        function createFeedstockPopup(d) {
+            return `
+                <div class="p-4 font-sans border-t-4" style="border-color: ${d.color}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-xl font-bold text-gray-800">${d.name}</h3>
+                        <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">Rank #${d.rank}</span>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">${d.type}</p>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <p class="text-xs text-gray-400">Est. Volume (ton/yr)</p>
+                            <p class="text-lg font-bold text-gray-800">${d.volume}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Owner</p>
+                            <p class="text-sm font-medium text-gray-700">${d.owner}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-1 text-xs text-blue-600 border-t pt-2">
+                        <p class="flex items-center gap-2">📞 ${d.phone}</p>
+                        <p class="flex items-center gap-2">🌐 ${d.web}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createCustomerPopup(d) {
+            return `
+                <div class="p-4 font-sans border-t-4" style="border-color: black">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-xl font-bold text-gray-800">${d.name}</h3>
+                        <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded font-bold">${d.priority} Priority</span>
+                    </div>
+                    <p class="text-sm font-semibold text-indigo-500 mb-2 uppercase tracking-wide">${d.segment}</p>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div>
+                            <p class="text-xs text-gray-400 font-bold uppercase">Revenue</p>
+                            <p class="text-md font-bold text-gray-800">${d.rev}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 font-bold uppercase">Trend</p>
+                            <p class="text-md font-bold text-gray-800">${d.trend}</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg border mb-2">
+                        <p class="text-xs text-gray-400 mb-1 uppercase font-bold">Strategic Notes</p>
+                        <p class="text-sm text-gray-700 italic leading-snug">${d.notes}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // LAYER GROUPS
+        const layers = {
+            bio: L.layerGroup(),
+            mine: L.layerGroup(),
+            slag: L.layerGroup(),
+            wte: L.layerGroup(),
+            customers: L.layerGroup()
+        };
+
+        // PLOT FEEDSTOCKS
+        [
+            {data: bioData, layer: layers.bio},
+            {data: mineData, layer: layers.mine},
+            {data: slagData, layer: layers.slag},
+            {data: wteData, layer: layers.wte}
+        ].forEach(group => {
+            group.data.forEach(d => {
+                L.circleMarker([d.lat, d.lng], {
+                    radius: 8,
+                    fillColor: d.color,
+                    color: "#fff",
+                    weight: 1.5,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                })
+                .bindPopup(createFeedstockPopup(d), { className: 'custom-popup' })
+                .addTo(group.layer);
+            });
+        });
+
+        // PLOT CUSTOMERS (19 Diamonds)
+        customerData.forEach(d => {
+            const diamondIcon = L.divIcon({
+                className: '',
+                html: `<div style="width: 16px; height: 16px; background-color: ${d.color}; border: 2px solid black; transform: rotate(45deg); box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            L.marker([d.lat, d.lng], { icon: diamondIcon })
+                .bindPopup(createCustomerPopup(d), { className: 'custom-popup' })
+                .addTo(layers.customers);
+        });
+
+        // Add default layers
+        Object.values(layers).forEach(l => l.addTo(map));
+
+        // CONTROLS
+        const overlayMaps = {
+            "<span style='color: #16a34a'>🌿 Biofuels</span>": layers.bio,
+            "<span style='color: red'>⛏️ Mining Tailings</span>": layers.mine,
+            "<span style='color: blue'>🔥 Metallurgical Slag</span>": layers.slag,
+            "<span style='color: #ea580c'>⚡ WTE Ashes</span>": layers.wte,
+            "🏢 <b>Target Customers (19)</b>": layers.customers
+        };
+        L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
+
+        // LEGEND
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML += '<strong>Sweden Resource Map</strong><br>';
+            div.innerHTML += '<i style="background: #16a34a"></i> Biofuel Sites (Green)<br>';
+            div.innerHTML += '<i style="background: red"></i> Mining Tailings (Red)<br>';
+            div.innerHTML += '<i style="background: blue"></i> Metal Slag (Blue)<br>';
+            div.innerHTML += '<i style="background: #ea580c"></i> WTE / IBA (Orange)<br>';
+            div.innerHTML += '<div class="diamond" style="background: #7c3aed"></div> Aggregates Customers (19)<br>';
+            return div;
+        };
+        legend.addTo(map);
+
+    </script>
+</body>
+</html>
